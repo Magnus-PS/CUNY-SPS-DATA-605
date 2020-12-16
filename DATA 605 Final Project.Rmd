@@ -1,0 +1,596 @@
+---
+title: "DATA 605 - Final Project"
+author: "Magnus Skonberg"
+date: "`r Sys.Date()`"
+output:
+  rmdformats::readthedown:
+    code_folding: hide
+    df_print: paged
+    highlight: tango
+    #number_sections: yes
+    smooth_scroll: yes
+    theme: united
+    toc_collapsed: yes
+    toc_depth: 5
+    toc_float: yes
+  pdf_document:
+    extra_dependencies:
+      -geometry
+      -multicol
+      -multirow
+  html_document:
+    df_print: paged
+    toc: yes
+    toc_depth: '5'
+    toc_float: yes
+  word_document:
+    toc: year
+    toc_depth: "5"
+theme: lumen
+number_sections: yes
+toc_depth: 3
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r load-packages, include=FALSE, message=FALSE}
+library(tidyverse)
+library(tidyr)
+library(RCurl)
+library(ggplot2)
+library(dplyr)
+library(reshape2)
+library(knitr)
+library(kableExtra)
+library(stats)
+library(corrplot)
+library(matlib)
+library(matrixcalc)
+library(MASS)
+library(gmodels)
+```
+
+## Background
+
+The purpose of our Computational Mathematics Final Project is to explore / showcase (some of) what we've learned over the course of the semester.
+
+[CLICK HERE](https://screenrec.com/share/dRTqbx6ImG) for video presentation.
+
+...............................................................................
+
+## Problem 1
+
+**Using R, generate a random variable X that has 10,000 random uniform numbers from 1 to N, where N can be any number of your choosing greater than or equal to 6. Then generate a random variable Y that has 10,000 random normal numbers with a mean of $\mu=\sigma=(N+1)/2$.**
+
+I ensured reproducibility, selected an N value and then made us of the runif() function to generate the specified number of random uniform numbers between 1 and N:
+
+```{r}
+#Ensure reproducibility:
+set.seed(90210)
+
+N <- 9 #chosen N value
+
+#Generate X variable of 10000 random uniform numbers between 1 and N:
+X <- runif(10000,1,N)
+summary(X)
+
+#generate Y variable of 10000 random normal numbers with specified mu=sigma=(N+1)/2
+ms <- (N+1)/2 #mu=sigma=(N+1)/2
+Y <- rnorm(10000,ms, ms)
+summary(Y)
+
+```
+
+
+### Probability
+
+**Calculate as a minimum the below probabilities.  Assume the small letter "x" is estimated as the median of the X variable, and the small letter "y" is estimated as the 1st quartile of the Y variable.  Interpret the meaning of all probabilities.**
+
+* P(X>x | X>y)
+* P(X>x, Y>y)
+* P(X<x | X>y)	
+
+First we define our x and y variables:
+
+```{r}
+x <- 5.003 #median of X variable
+y <- 1.590 #1st quartile of Y variable
+```
+
+Then we explore **P(X>x | X>y)**:
+
+```{r}
+#P(X>x | X>y): conditional probability
+
+#Calculate the probability P(X>x):
+pa1 <- sum(X > x) / 10000
+pa1
+
+#Calculate the probability P(X>y):
+pa2 <- sum(X > y) / 10000
+pa2
+
+#Conditional probability = P(AnB) / P(B)
+cond_prob_1 <- pa1 / pa2
+round(cond_prob_1,3)
+
+```
+
+Being that x > y. If P(X>x) holds then P(X>y) holds, so our conditional probability expression simplifies to $pa1 / pa2$ and we arrive at **P(X>x | X>y) = 0.541**.
+
+What we're doing is exploring the probability that $X > x$ given that $X > y$ with the expectation of an output greater than 0.5 because of our "pre-filtering" for a higher lower bound (y) on our X set.
+
+As a more in depth explanation: rather than our X ranging from 1 through N=9, to meet the condition of $X > y$ we're instead considering only X values that are greater than 1.590. This smaller set, starts with a higher lower bound and thus, we'd expect the proportion of values that meet the condition of $X > x$, where x = 5.003 to be higher (which is true).
+
+Next we explore **P(X>x, Y>y)**:
+
+```{r}
+#P(X>x, Y>y): joint distribution
+
+#Calculate the probability P(X>x):
+pa1 <- sum(X > x) / 10000
+pa1
+
+#Calculate the probability P(Y>y):
+pa3 <- sum(Y > y) / 10000
+pa3
+
+#Joint probability = P(A)*P(B)
+joint <- pa1 * pa3
+round(joint, 3)
+
+```
+
+Being that we're looking for the joint probability distribution, we're merely looking for the product of the two individual probabilities. We find P(X>x) and P(Y>y), compute their product P(X>x) * P(Y>y) and voila! we arrive at a joint probability distribution of **P(X>x, Y>y) = 0.375**.
+
+We're looking for X > x (the average value) which gives us ~0.5 *and* Y > y (the 1st quartile value) which gives us ~0.75. Being that both values hold true (they make sense) ... taking 1/2 of 3/4 or 3/4 of 1/2 leads to 3/8 (their product) which makes perfect sense as a joint probability distribution.
+
+Next we explore **P(X<x | X>y)**:
+
+```{r}
+
+#P(X<x | X>y): conditional probability
+
+#Calculate the probability P(X<x):
+pa4 <- sum(X < x) / 10000
+pa4
+
+#Calculate the probability P(X>y):
+pa2 <- sum(X > y) / 10000
+pa2
+
+#Conditional probability = P(AnB) / P(B)
+cond_prob_2 <- (pa2 - pa4) / pa2
+round(cond_prob_2,3)
+
+```
+
+What we're doing is exploring the probability that $X < x$ given that $X > y$ with the expectation of an output less than 0.5 because of our "pre-filtering" for a higher lower bound (y) on our X set.
+
+Rather than our X ranging from 1 through N=9, to meet the condition of $X > y$ we're instead considering only X values that are greater than 1.590. This smaller set, starts with a higher lower bound and thus, we'd expect the proportion of values that meet the condition of $X < x$, where x = 5.003 to be lower (which is true). This is because the range of values for which our expression holds is narrowed when we shift the lower bound up while holding the upper bound (ie. y < X < x).
+
+
+### Investigation
+
+**Investigate whether P(X>x and Y>y)=P(X>x)P(Y>y) by building a table and evaluating the marginal and joint probabilities.**
+
+For building out our probability distribution table, we initialize the (marginal) probabilities of interest , calculate joint probabilities, populate the table with corresponding values, and then convert this table into a nice and simple output table by using the kable() package. The implementation in R is shown below:
+
+```{r}
+#Initialize probabilities of interest
+X_gt <- round(sum(X > x) / 10000,3) #P(X>x)
+X_lt <- round(sum(X < x) / 10000,3) #P(X<x)
+Y_gt <- round(sum(Y > y) / 10000,3) #P(Y>y)
+Y_lt <- round(sum(Y < y) / 10000,3) #P(Y<y)
+total <- X_gt + X_lt #or Y_gt + Y_lt ... either way it's 1.0
+
+#Calculate joint probabilities
+p11 <- X_gt * Y_gt #P(X>x,Y>y)
+p21 <- X_gt * Y_lt #P(X>x,Y<y)
+p12 <- X_lt * Y_gt #P(X<x,Y>y)
+p22 <- X_lt * Y_lt #P(X<x,Y<y)
+
+#Populate table with marginal and joint probabities
+##The table is populated column by column, top to bottom
+p <- matrix(c("", "", "Y", "", "", "", "", ">y", "<y", "marginal (X)", "", ">x",p11, p21, X_gt, "X", "<x", p12, p22, X_lt, "", "marginal (Y)",Y_gt, Y_lt, total), ncol=5)
+
+#Convert into nicer form and display probability table
+p %>%
+  kbl() %>%
+  kable_minimal()
+
+```
+
+From the output table (above), and as we noted before, we observe that the joint probability is indeed just the product of corresponding marginal probabilities. As such, **P(X>x and Y>y) = P(X>x)P(Y>y).**
+
+
+### Testing
+
+**Check to see if independence holds by using Fisher’s Exact Test and the Chi Square Test.  What is the difference between the two? Which is most appropriate?**
+
+*Fisher's Exact Test* is a statistical test used to determine the level of association, or whether there is a non-random association, between two categorical variables. 
+
+The *Chi Square Test*, by contrast, is used to quantify the magnitude of discrepancy between expected and actual results and is often used in hypothesis testing.
+
+To compare the output of each test ... we initialize our contingency table, which is just our p-table joint probability values multiplied by n (10,000), and use this table as input to the built in fisher.test() and chisq.test() functions. Each function outputs a p-value as well as a number of other variables for consideration:
+
+```{r}
+#Initialize contingency table
+c_table <- matrix(c(3750, 1250, 3750, 1250), ncol=2)
+c_table
+
+#Compute Fisher's Exact Test:
+fisher.test(c_table)
+
+#Compute Chi Square Test:
+chisq.test(c_table)
+
+```
+
+When we observe the outputs above, we see that each test produces a p-value of 1. From this, we can extend that **independence holds.**
+
+One of the major differences between Fisher's Exact Test and the Chi Square Test is that Fisher's is meant to be employed for relatively small sample sizes while the Chi Square Test is better for relatively large sample sizes. As such, and given the fact that we're dealing with samples sizes of 10,000 (which is relatively large), **the Chi Square Test is the better test for our purposes**.
+
+...............................................................................
+
+## Problem 2
+
+Register for Kaggle.com (free) and compete in the House Prices: Advanced Regression Techniques competition.  https://www.kaggle.com/c/house-prices-advanced-regression-techniques.
+
+### Descriptive and Inferential Statistics
+
+**Provide univariate descriptive statistics and appropriate plots for the training data set.  Provide a scatterplot matrix for at least two of the independent variables and the dependent variable. Derive a correlation matrix for any three quantitative variables in the dataset.  Test the hypotheses that the correlations between each pairwise set of variables is 0 and provide an 80% confidence interval. Discuss the meaning of your analysis. Would you be worried about familywise error? Why or why not?**
+
+First, we read in our training and test data. The .csv files were downloaded from Kaggle (linked to above), uploaded to Github, read in raw, converted to tibble (a new S3 generic with more efficient methods for matrices and dataframes), and then verified via printing of the 1st 6 rows of each table:
+
+```{r}
+#Read in training and test data .csv files:
+hp_train <- read.csv("https://raw.githubusercontent.com/Magnus-PS/CUNY-SPS-DATA-605/Final-Project/hp_train.csv")
+train_table <- as_tibble(hp_train)
+head(train_table)
+
+hp_test <- read.csv("https://raw.githubusercontent.com/Magnus-PS/CUNY-SPS-DATA-605/Final-Project/hp_test.csv")
+test_table <- as_tibble(hp_test)
+head(test_table)
+
+```
+
+One of the early contrasts we'll observe between training and test data is that the training data has 81 columns (variables) whereas the test data has 80 columns (variables). The missing column is $SalePrice$ which makes sense :)
+
+Further EDA (exploratory data analysis) of the training dataset is shown below:
+
+```{r}
+#Initial familiarization with dataset
+
+nrow(train_table)
+ncol(train_table)
+colnames(train_table)
+#summary(train_table) #commented out for sake of conciseness
+
+```
+
+We explore the number of rows (1460), the number of columns (81), the names of the columns (Id, MSSubClass, MSZoning, etc.), and the corresponding summary statistics. The summary statistics provide early insight into what sort of data each variable holds and (if numeric) what the min vs. max, 1st quartile vs. 3rd quartile, median and mean values are for the given variable but the problem is that the output is HUGE and it's a lot to peruse. 
+
+Instead of dissecting each variable, I marked column names of interest (those I thought could have an effect on the final SalePrice), explored these variables and then elected independent variables based on this more tailored approach:
+
+```{r}
+#Summary statistics for specific variables of interest
+##Dependent variable
+summary(train_table$SalePrice)
+
+##Independent variable selection
+summary(train_table$Neighborhood)
+summary(train_table$HouseStyle)
+summary(train_table$Foundation)
+summary(train_table$GrLivArea)
+summary(train_table$TotRmsAbvGrd)
+summary(train_table$Fireplaces)
+
+```
+
+From the output (above), we see that our first (3) independent variables of interest are categorical / character-based variables. For sake of simplicity, I elected to instead peruse the numerical variables: $GrLivArea$, $TotRmsAbvGrd$, and $Fireplaces$. Reason being, I was looking for non-generic variables that may be predictive of a home's sale price and I thought the size of the grand living area, the total rooms above grade (taller house, higher price), and number of fireplaces might be a good place to start. 
+
+Thus, our variables of interest are:
+
+* **Dependent:** $SalePrice$
+
+* **Independent:** $GrLivArea, TotRmsAbvGrd, Fireplaces$
+
+With these variables elected, we then move on to visualizing our dependent and independent variables 
+
+```{r}
+#Visualization of select variables of interest
+##Histogram of dependent variable: SalePrice
+hist(train_table$SalePrice, xlab = "SalePrice", main = "Sale Price Histogram", col = "blue")
+
+##Histogram of independent variables: GrLivArea, TotRmsAbvGrd, Fireplaces
+hist(train_table$GrLivArea, xlab = "Grand Living Rm Area", main = "Grand Living Rm Area Histogram", col = "blue")
+hist(train_table$TotRmsAbvGrd, xlab = "Total Rooms Above Grade", main = "Total Rooms Above Grade Histogram", col = "blue")
+hist(train_table$Fireplaces, xlab = "Fireplaces", main = "Fireplaces Histogram", col = "blue")
+
+```
+
+Our $SalePrice$, $GrLivArea$, and $TotRmsAbvGrd$ plots are all unimodal, nearly normal, and left skewed. The $Fireplaces$ data does not fit the same criterion but it may still be an indicator for *very* high value homes and so we proceed to the scatter matrix and correlation matrix with all variables and a sense of curiosity:
+
+```{r}
+#Scatter plot matrix for 2+ independent variables and the dependent variable
+select_few <- subset(train_table, select=c(SalePrice, GrLivArea, TotRmsAbvGrd, Fireplaces))
+
+pairs(select_few, pch=19, lower.panel=NULL)
+```
+
+From the above scatter plots, we can see that as the corresponding $GrLivArea$ and $TotRmsAbvGrd$ values increase, so does the $SalePrice$. The same can not be said for $Fireplaces$ and thus that variable may not be as useful as we'd hoped. For this reason, we proceed to the correlation matrix with just 3/4 variables: $SalePrice$, $GrLivArea$, and $TotRmsAbvGrd$:
+
+```{r}
+#Correlation matrix for (3) quantitative variables
+select_fewer <- subset(train_table, select=c(SalePrice, GrLivArea, TotRmsAbvGrd))
+
+select_fewer.cor = cor(select_fewer)
+select_fewer.cor
+
+corrplot(select_fewer.cor)
+
+```
+
+From the correlation matrix we can proceed to use the [cor.test function](https://www.rdocumentation.org/packages/stats/versions/3.6.2/topics/cor.test) to test whether the hypotheses that the correlation between each pairwise set of variables is 0 (provided an 80% confidence interval).
+
+We start with $SalePrice$ vs. $GrLivArea$:
+
+```{r}
+cor.test(select_fewer$GrLivArea, select_fewer$SalePrice, conf.level = 0.8)
+```
+
+With **p-value < 2.2e-16**, which is far less than the typical 0.05 threshold, we reject the null hypothesis (of 0 correlation). We can then pull a **correlation estimate of 0.7086** on the **80 percent confidence interval: 0.6915087 0.7249450**, thus finding a relatively high correlation between this pairwise set of variables. This tells us that $GrLivArea$ may indeed be a good predictor of $SalePrice$.
+
+We then move on $SalePrice$ vs. $TotRmsAbvGrd$:
+
+```{r}
+cor.test(select_fewer$TotRmsAbvGrd, select_fewer$SalePrice, conf.level = 0.8)
+```
+
+With **p-value < 2.2e-16**, which is far less than the typical 0.05 threshold, we reject the null hypothesis (of 0 correlation). We can then pull a **correlation estimate of 0.5337** on the **80 percent confidence interval: 0.5092841 0.5573021**, thus finding a decent correlation - neither very strong nor weak - between this pairwise set of variables. This tells us that $TotRmsAbvGrd$ is an OK predictor of $SalePrice$ and we'd likely be better off using a variable with a stronger correlation (if possible).
+
+Regarding **family-wise error**: for 2 tests, I would not be worried about family-wise error but as the number of tests and variables under consideration increases, the likelihood of family-wise error would as well and thus if we were to ramp our testing up to say 5, 10 or more (ie. considering all 80 variables in our set) then I would be worried about [familywise error](https://www.real-statistics.com/hypothesis-testing/familywise-error/). *As an aside, another way of dealing with this would be to reduce our alpha value ...*
+
+
+### Linear Algebra and Correlation
+
+**Invert your correlation matrix from above. (This is known as the precision matrix and contains variance inflation factors on the diagonal.) Multiply the correlation matrix by the precision matrix, and then multiply the precision matrix by the correlation matrix. Conduct LU decomposition on the matrix.**
+
+We start by initializing our correlation matrix by retaining the values of the matrix specified above ($select_fewer$) and initializing our precision matrix by taking the inverse of our correlation matrix via the inv() function.
+
+We then multiply our correlation and precision matrices, using $corr * prec$ and $prec * corr$ to confirm that yes indeed $AA^{-1} = A^{-1}A$:
+
+```{r}
+#initialize correlation and precision matrices
+corr <- matrix(select_fewer.cor[,1:3],nrow=3)
+prec <- inv(corr)
+
+#matrix multiplication: corr * prec
+corr_prec <- corr * prec
+prec_corr <- prec * corr
+corr_prec == prec_corr #confirming A*inv(A) = inv(A)*A
+```
+
+From above we see that all entries are identical, thus confirming that $corr * prec = prec * corr$. We then conduct LU decomposition using the $lu.decomposition$ function:
+
+```{r}
+#conduct LU decomposition
+lu <- lu.decomposition(corr_prec)
+lu
+```
+
+Recalling $A = LU$ for LU decomposition, we confirm above that (1) our lower triangular matrix has 1s on the diagonal, values beneath and 0s above the diagonal and (2) our upper triangular matrix has values on and above the diagonal with 0s beneath.
+
+
+### Calculus-Based Probability & Statistics
+
+**Many times, it makes sense to fit a closed form distribution to data.  Select a variable in the Kaggle.com training dataset that is skewed to the right, shift it so that the minimum value is absolutely above zero if necessary.  Then load the MASS package and run fitdistr to fit an exponential probability density function.  (See  https://stat.ethz.ch/R-manual/R-devel/library/MASS/html/fitdistr.html ).  Find the optimal value of $\lambda$ for this distribution, and then take 1000 samples from this exponential distribution using this value (e.g., rexp(1000, $\lambda$)). Plot a histogram and compare it with a histogram of your original variable. Using the exponential pdf, find the 5th and 95th percentiles using the cumulative distribution function (CDF). Also generate a 95% confidence interval from the empirical data, assuming normality.  Finally, provide the empirical 5th percentile and 95th percentile of the data.  Discuss.**
+
+The $SalePrice$ variable's histogram had a pronounced right skew and so we'll reconsider this variable.
+
+We revisit the summary statistics, apply the fitdistr() function to the $SalePrice$ data, use the estimate value as our $optimal$ lambda, take 1000 samples of a random exponential with our $optimal$ lambda value, and then plot the resulting (exponential) histogram vs. the original for $SalePrice$:
+
+```{r}
+#select right skewed variable:
+#summary(train_table$SalePrice)
+
+#shift min val from 34900 to 0: not necessary
+
+#load MASS pckg and fit exp distribution
+fitted <- fitdistr(train_table$SalePrice, "exponential")
+fitted
+
+#find optimal lambda and take 1000 samples
+optimal <- fitted$estimate
+samples <- rexp(1000, optimal)
+head(samples)
+
+#Plot the result vs. original
+par(mfrow = c(1, 2))
+hist(train_table$SalePrice, xlab = "SalePrice", main = "Original Sale Price Histogram", col = "blue")
+hist(samples, xlab = "SalePrice", main = "Exponential Sale Price Histogram", col = "gray")
+
+```
+
+The histograms highlight the difference in axes and data. When we consider the exponential histogram vs. that of the original, we see that the peak has been shifted to ~0 the axis and that the x and y axes have been slightly scaled.
+
+Next, we use the exponential pdf to obtain our 5th and 95th percentile values. To do so we use the qexp() function with our desired percentile (as a decimal) and optimal lambda value as the provided $rate$ variable:
+
+```{r}
+#5th percentile using CDF
+qexp(.05, rate = optimal) #CDF for 5% and lower
+
+#95th percentile using CDF
+qexp(.95, rate = optimal) #CDF for 95% and lower
+
+```
+
+We then proceed to generating a 95% confidence interval ...
+
+The confidence interval follows as $CI = \mu \frac{+}{-} z \frac{s}{\sqrt{n}}$ and thus we need to find the components of the equation to calculate our interval:
+
+```{r, message=FALSE}
+#95% confidence interval (assuming normality):
+z <- 1.96 #for 95% confidence
+mu <- mean(train_table$SalePrice)
+s <- sd(train_table$SalePrice)
+n <- nrow(as.matrix(train_table$SalePrice))
+
+#Calculate the differential
+diff <- (z * s) / sqrt(n)
+
+#Calculate lower bound of confidence interval
+CI_lower <- mu - diff
+CI_lower
+
+#Upper bound of confidence interval
+CI_upper <- mu + diff
+CI_upper
+
+mu
+
+#Confirm using built in function
+ci(train_table$SalePrice, confidence=0.95)
+
+```
+
+Our 95% confidence interval ranges from 176846.1 to 184996.2 with the mean at 180921. Being that it's meant to be 2 standard deviations from our mean, it's supposed to provide the range over which 95% of our values should lie. 
+
+Moving on from the confidence interval, we seek our *empirical* 5th and 95th percentiles with regard to the data. To do so, we use the quantile() function:
+
+```{r}
+#5th and 95th percentile:
+quantile(train_table$SalePrice, 0.05)
+quantile(train_table$SalePrice, 0.95)
+
+```
+
+Comparing our 5th and 95th percentiles for the original data vs that of the exponential highlights the contrasts between. We saw it with the scaling of axes and spread of values on the histograms and we see it again when we look at the percentiles. Having fit our data to an exponential function resulted in a lower 5th percentile and higher 95th percentile (as compared to the original data). 
+
+It's also worth questioning the calculated confidence interval. The CI is *supposed to* provide a range that represents 95% of the data values ... but when we revisit our summary statistics for the original data, it doesn't even appear to capture 50% of the data. Maybe it's a misinterpretation on my end or maybe there was some data cleaning that should have been performed to account for NA's, outliers, etc. I just thought it worth noting.
+
+
+### Modeling
+
+**Build some type of multiple regression  model and submit your model to the competition board.  Provide your complete model summary and results with analysis.  Report your Kaggle.com user name and score.**
+
+After re-visiting, the earlier variable summary statistics, I elected 12 variables (LotArea, HouseStyle, OverallQual, OverallCond, TotalBsmtSF, X1stFlrSF X2ndFlrSF, GrLivArea, BedroomAbvGr, TotRmsAbvGrd, GarageCars, GarageArea) based on (1) whether they were numeric and (2) whether I perceived there to be a correlation between the variable and the SalePrice. I cast a wide net to start, believing that the (p-values of the) summary statistics could be used to weed out any non-pertinent variables.
+
+For each variable whose p-value was above the threshold (0.05), I compared the R-squared value for including vs. dropping that variable. If there was no net negative effect, I dropped the variable. This resulted in the drop of X1stFlrSF and GarageArea, and a 10 variable multivariate linear regression model as shown below:
+
+```{r, message=FALSE}
+
+#Determine variables and run model
+attach(train_table)
+
+housing.lm <- lm(SalePrice ~ LotArea + HouseStyle + OverallQual + OverallCond + TotalBsmtSF + X2ndFlrSF + GrLivArea + BedroomAbvGr + TotRmsAbvGrd + GarageCars)
+
+#Display summary statistics
+summary(housing.lm)
+
+```
+
+With a high R-squared value (0.7852) and a low p-value (2.2e-16), it appears, we have a promising model on our hands. One that may represent upto 78.5% of our data.
+
+Exploring further via plotting leads to:
+
+```{r}
+#Subset graphs so we can display all (3) on one output
+par(mfrow=c(2,2))
+
+#Histogram of residuals
+hist(resid(housing.lm), breaks = 50, main = "Histogram of Residuals", xlab= "")
+
+#Residuals plot
+plot(resid(housing.lm), fitted(housing.lm), main = "Residuals Plot") 
+
+#Q-Q plot
+qqnorm(resid(housing.lm))
+qqline(resid(housing.lm))
+
+```
+
+A nearly normal histogram, a residuals plot that appears (although difficult to interpret) to be randomly spread within a certain range, and a Q-Q plot that follows the line until the lower and upper quantiles (-3, 3) show that we're dealing with a strong model *but* we have to account for non-pertinent observations / values and outliers. **For a stronger model, we'd like to account for NA values and outliers.**
+
+At this point, we re-introduce our test data, attempt to account for NA values and outliers, test our model with the test data, interpret the result, and submit our findings to Kaggle:
+
+```{r}
+#Identify outlier value ranges
+#hist(test_table$LotArea, breaks=50) #30000 and up
+#hist(test_table$GrLivArea, breaks=50) #3200 and up
+
+#Remove Outliers from test data
+RO_test <- test_table %>%
+  filter(LotArea < 30000) %>%
+  filter(GrLivArea < 3200)
+
+#Subset data based on columns of interest
+SRO_test <- subset(test_table, select=c(LotArea, HouseStyle, OverallQual, OverallCond, TotalBsmtSF, X2ndFlrSF, GrLivArea, BedroomAbvGr, TotRmsAbvGrd, GarageCars))
+
+#Account for NA values
+NSRO_test <- na.omit(SRO_test)
+
+```
+
+After removing outlier and NA values from the test dataset, we're ready to feed our model and observe the results:
+
+```{r}
+#Run the model
+SP_pred <- predict(housing.lm, NSRO_test)
+
+```
+
+
+```{r}
+#Compare actual vs. predictive summary statistics
+summary(SP_pred)
+summary(train_table$SalePrice)
+```
+
+Looking at our summary statistics: aside from Min and Max values, the 1st Qu, Median, Mean, and 3rd Qu comparison between predictive and actual SalePrice statistics are incredibly in-line.
+
+Next, we compare output histograms:
+
+```{r}
+#Compare actual vs. predictive plots
+par(mfrow=c(1,2))
+hist(SP_pred, breaks=25, xlab = "Housing Sales Price", main = 'Predictive Histogram [test]')
+hist(train_table$SalePrice, breaks=30, xlim = c(0, 600000), xlab = "Housing Sales Price", main = 'Actual Histogram [train]')
+
+```
+
+Again, although it may be tough to read because the x axis is zoomed out to account for the great range of sales prices, our histograms are also (aside from outlier values) incredibly in-line.
+
+At this point, I felt quite confident in the model and just had to re-package the SalePrice predictions with corresponding IDs prior to submitting back to Kaggle:
+
+```{r}
+#Re-package predictions with ID
+rpckgd = cbind(test_table$Id, SP_pred)
+colnames(rpckgd) = c("Id", "SalePrice")
+rpckgd[rpckgd<0] <- 0 #account for negative values
+final = as.data.frame(rpckgd)
+head(final) #verify output
+
+##Does the number of decimal places matter for SalePrice (ie. round(,2))?
+
+#Write to csv - COMMENTED OUT to knit .rmd file
+#write.csv(final, file="kaggle_hp_sub.csv", row.names = FALSE)
+
+#Submit and see my score
+
+```
+
+..............................................................................
+
+## Closing Remarks
+
+Based on the submission, I see that while I may have been confident in the model based on the R-squared and p-values from the summary statistics and residual plots, and while I did adapt per what I thought the feedback was (accounting for NA values and outliers), my Kaggle score confirms that I still have a long ways to go ...
+
+![Kaggle score](C:/Users\magnu\Desktop\first_kaggle_score.png)
+
+To improve this model, I could have looked into / applied some more advanced methods (ie. feature engineering or random forests). I'm not currently familiar with these methods but now at least I can see where they may be applicable.
+
+All-in-all this Project (and the Kaggle submission in particular) were a great way to review a lot of the concepts covered this past semester, while highlighting how much more there is to learn and how much further there is to go. 
